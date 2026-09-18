@@ -1,10 +1,17 @@
 # -*- coding: utf-8 -*-
 """A minimal ENTSO-E Transparency Platform client — one file, no dependencies.
 
-Standard library only. Handles the three things that trip people up:
-variable resolution (PT15M / PT30M / PT60M), multi-day responses, and the
-fact that errors come back as XML with a Reason element rather than an
-HTTP status you can branch on.
+Standard library only. Handles the things that trip people up:
+
+* **curveType A03.** When consecutive intervals share a price, ENTSO-E sends
+  only the first one and omits the rest. Read position-by-position and those
+  intervals vanish — a French day can come back with 85 of 96 quarter-hours
+  and a daily average 11 % too high.
+* **Several series in one response.** Day-ahead (A01) and intraday auctions
+  (A07) arrive together, as do the 60-minute and 15-minute MTU publications.
+  Merge them and one silently overwrites the other.
+* variable resolution (PT15M / PT30M / PT60M) and multi-day responses
+* errors come back as XML with a Reason element, not an HTTP status
 
     from entsoe_quickstart import Entsoe
 
@@ -75,17 +82,45 @@ class Entsoe:
         root = self.get(**params)
         ns = {"n": root.tag.split("}")[0].strip("{")}
         out: dict[datetime, float] = {}
-        for period in root.findall(".//n:Period", ns):
+
+        def _kind(ts):
+            # A01 = day-ahead contract, A07 = intraday auction. The sequence position
+            # separates the 60-minute and 15-minute MTU publications that now run
+            # side by side. One response can carry several of these at once, and
+            # merging them silently overwrites one series with another.
+            agreement = ts.find("n:contract_MarketAgreement.type", ns)
+            seq = ts.find("n:classificationSequence_AttributeInstanceComponent.position", ns)
+            return (agreement.text if agreement is not None else "A01",
+                    seq.text if seq is not None else "1")
+
+        series = root.findall(".//n:TimeSeries", ns)
+        day_ahead = [t for t in series if _kind(t)[0] == "A01"] or series
+        first_seq = [t for t in day_ahead if _kind(t)[1] == "1"] or day_ahead
+        periods = [p for t in first_seq for p in t.findall("n:Period", ns)]
+
+        for period in (periods or root.findall(".//n:Period", ns)):
             start = _utc(period.find("n:timeInterval/n:start", ns).text)
+            end = _utc(period.find("n:timeInterval/n:end", ns).text)
             step = RESOLUTIONS.get(period.find("n:resolution", ns).text, 60)
-            for point in period.findall("n:Point", ns):
-                pos = int(point.find("n:position", ns).text)
+            total = max(1, int((end - start).total_seconds() // 60 // step))
+            # curveType A03 ("variable sized block"): when consecutive intervals share
+            # a price, ENTSO-E sends only the first one and skips the rest. The value
+            # holds until the next position, so the gaps have to be filled in. Read
+            # position-by-position and you silently lose those intervals — which is the
+            # single most common mistake people make with this API.
+            points = sorted(
+                (int(p.find("n:position", ns).text), p)
+                for p in period.findall("n:Point", ns)
+            )
+            for i, (pos, point) in enumerate(points):
                 value = point.find("n:price.amount", ns)
                 if value is None:
                     value = point.find("n:quantity", ns)
                 if value is None:
                     continue
-                out[start + timedelta(minutes=step * (pos - 1))] = float(value.text)
+                nxt = points[i + 1][0] if i + 1 < len(points) else total + 1
+                for k in range(pos, nxt):
+                    out[start + timedelta(minutes=step * (k - 1))] = float(value.text)
         return out
 
     # ------------------------------------------------------------- helpers

@@ -45,6 +45,19 @@ root = api.get(documentType="A80", biddingZone_Domain="10YCZ-CEPS-----N",
 
 ## What it handles that a naive script does not
 
+- **Compressed curves (`curveType` A03).** When consecutive intervals clear at
+  the same price, ENTSO-E sends the first one and omits the rest — the value
+  holds until the next `position`. Read the points one by one and those
+  intervals vanish without a trace. A French day comes back with 85 of 96
+  quarter-hours, the holes sit in the cheap midday solar block, and the daily
+  average lands 11 % too high. Nothing in the response says anything is
+  missing, which is what makes it the most common mistake with this API.
+- **Several series in one response.** Day-ahead (`contract_MarketAgreement.type`
+  A01) and intraday auctions (A07) arrive together, and since the 15-minute MTU
+  go-live the 60-minute and 15-minute publications do too, separated only by
+  `classificationSequence_AttributeInstanceComponent.position`. Merge them into
+  one dict and the last one silently overwrites the others. Spain returns six
+  such series for a single day.
 - **Variable resolution.** Resolution is read per `Period`, not assumed. The
   continental day-ahead auction moved to 15-minute products in 2025, Great
   Britain settles in half-hours, and some documents are daily. Code that
