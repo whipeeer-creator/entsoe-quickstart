@@ -198,9 +198,23 @@ confidently wrong.
 
 It is, in a sense. curveType is in the ENTSO-E data model, and A03 is described
 there as a variable sized block. What is missing is any signal at the point of
-use. The API does not mark a compressed series, the client libraries mostly do
-not mention it, and the failure is silent by construction: you get fewer rows
-than you asked for and every one of them is correct.
+use: the response does not flag a compressed series, and the failure is silent
+by construction — you get fewer rows than you asked for and every one of them
+is correct.
+
+The established clients do handle it. [`entsoe-py`](https://github.com/EnergieID/entsoe-py),
+the most widely used Python wrapper, reindexes the period and forward-fills
+whenever `curveType` is A03, which is the right answer:
+
+```python
+if soup.find('curvetype').text == 'A03':
+    S = S.reindex(pd.date_range(start, end - delta, freq=delta_text)).ffill()
+```
+
+So this is not a warning about libraries. It is a warning about the parser
+people write themselves, because reading an XML document point by point is the
+obvious thing to do and it is wrong here. Ours was hand-rolled, and that is
+exactly why it broke.
 
 The result is a class of bug where two people pull the same day from the same
 platform and get different daily averages, and neither can see why. If you have
