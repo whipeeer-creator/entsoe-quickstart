@@ -43,6 +43,18 @@ root = api.get(documentType="A80", biddingZone_Domain="10YCZ-CEPS-----N",
                periodStart="202601010000", periodEnd="202601310000")
 ```
 
+> ### Read this first
+>
+> ENTSO-E omits repeated intervals instead of sending them. A French day came
+> back with **85 of 96 quarter hours** and a daily average **11 % too high**,
+> with no error anywhere. It had removed 10.8 % of our own published dataset
+> before we noticed.
+>
+> **[curveType A03: the gap that eats 10 % of your prices](docs/curvetype-a03.md)**
+> — what it is, the second trap in the same response, and
+> [a 90-line script](docs/check_gaps.py) that tells you in one command whether
+> your own parser has it.
+
 ## What it handles that a naive script does not
 
 - **Compressed curves (`curveType` A03).** When consecutive intervals clear at
@@ -126,9 +138,6 @@ There is no self-service button; the e-mail step is mandatory.
 - [A practical guide to the ENTSO-E API](https://progrunners.com/entso-e-api/) —
   the longer version of this README: document types, resolutions, publication
   delays and the undocumented errors
-- [curveType A03: the gap that eats 10 % of prices](https://progrunners.com/entsoe-curvetype-a03/) —
-  how the platform omits repeated intervals, what it does to a daily average,
-  and how to check a series you already have.
 - [Live European prices](https://progrunners.com/european-electricity-prices/) —
   today's numbers for 38 zones, with a national page per market:
   [Spain](https://progrunners.com/es/precio-luz-hoy/) ·
@@ -148,5 +157,10 @@ There is no self-service button; the e-mail step is mandatory.
   [Slovenia](https://progrunners.com/sl/cena-elektrike/) ·
   [Czechia](https://progrunners.com/cs/spotova-cena-elektriny/)
 
-Maintained by [progrunners](https://progrunners.com/) — trading dashboards and
-market data pipelines for European power markets.
+Maintained by [progrunners](https://progrunners.com/open-source/) — we build
+trading dashboards and market data pipelines for European power markets, and
+publish the parts that are useful on their own.
+
+**All of it in one place:** [progrunners.com/open-source](https://progrunners.com/open-source/)
+— six repositories, what each one is for, and the one mistake worth reading
+about before you trust any price series, ours included.
