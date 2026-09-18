@@ -126,6 +126,9 @@ There is no self-service button; the e-mail step is mandatory.
 - [A practical guide to the ENTSO-E API](https://progrunners.com/entso-e-api/) —
   the longer version of this README: document types, resolutions, publication
   delays and the undocumented errors
+- [curveType A03: the gap that eats 10 % of prices](https://progrunners.com/entsoe-curvetype-a03/) —
+  how the platform omits repeated intervals, what it does to a daily average,
+  and how to check a series you already have.
 - [Live European prices](https://progrunners.com/european-electricity-prices/) —
   today's numbers for 38 zones, with a national page per market:
   [Spain](https://progrunners.com/es/precio-luz-hoy/) ·
