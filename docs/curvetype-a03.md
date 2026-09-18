@@ -184,10 +184,25 @@ code:
    [energy-charts](https://api.energy-charts.info/price?bzn=FR) is free, needs
    no key, and returns JSON.
 
-We use two references rather than one, and neither of them is ENTSO-E:
-energy-charts for the coupled European zones, and OTE directly for Czechia. For
-18 September 2026 all three agreed on 111.5 EUR/MWh for the Czech day to the
-tenth. An independent source is the only thing that catches a parser that is
+We use references that are not ENTSO-E: energy-charts for the coupled European
+zones, and OTE directly for Czechia. For 18 September 2026 all of them agreed
+on 111.5 EUR/MWh for the Czech day to the tenth.
+
+As a third check we ran the same day through `entsoe-py`, which reaches the
+platform independently of anything we wrote:
+
+| Zone | ours | entsoe-py |
+|---|---|---|
+| Spain | 124.8 | 124.78 |
+| Germany–Luxembourg | 120.5 | 120.53 |
+| France | 119.7 | 119.74 |
+| Czechia | 111.5 | 111.55 |
+
+Three implementations, 96 intervals each, agreement to the cent. That is what a
+correct parse looks like — and it is worth knowing that the established library
+gets both of these right, so if you use it you have nothing to fix.
+
+An independent source is the only thing that catches a parser that is
 confidently wrong.
 
 > **Recomputing with your own code proves nothing.** Our prices matched our own
