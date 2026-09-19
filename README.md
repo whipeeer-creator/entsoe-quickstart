@@ -54,6 +54,17 @@ root = api.get(documentType="A80", biddingZone_Domain="10YCZ-CEPS-----N",
 > — what it is, the second trap in the same response, and
 > [a 90-line script](docs/check_gaps.py) that tells you in one command whether
 > your own parser has it.
+>
+> ### And this, if you are building features for a model
+>
+> No document on the platform says when it was published, only what it is
+> about. We measured it: balancing data is out **under 3 minutes** after the
+> quarter ends, actual load arrives in hourly blocks, and a **forced outage
+> reaches `A80` a median of 8 minutes _after_ the unit is already down**.
+>
+> **[When ENTSO-E data actually arrives](docs/publication-delay.md)** — measured
+> on 2 900 outage messages across 52 weeks, with
+> [a script](docs/check_delay.py) that runs the same probe on your zone.
 
 ## What it handles that a naive script does not
 
