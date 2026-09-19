@@ -16,19 +16,27 @@ So we did. This page is the measurement.
 
 ## The short version
 
-| Document | What it is | Available after the interval ends |
-|---|---|---|
-| `A85` / `A86` | imbalance price and volume | **under 3 minutes** |
-| `A84` | activated balancing energy | **under 3 minutes** |
-| `A75` / `A74` | generation per production type | 12–20 minutes |
-| `A65` `A16` | actual load | 5–12 minutes, but **hourly blocks** |
-| `A73` | generation per individual unit | around 16 hours |
-| `A80` forced | unplanned outage, first message | **median 8 minutes _after_ it starts** |
+| Document | What it is | Available after the interval ends | How we know |
+|---|---|---|---|
+| `A85` | imbalance price | **2.4 and 2.7 minutes** | timed at two quarter-hour boundaries |
+| `A86` | imbalance volume | within 5 minutes | upper bound from a probe |
+| `A84` | activated balancing energy | 4–14 minutes, in batches | bracketed by two probes |
+| `A65` `A16` | actual load | 5–12 minutes, **hourly blocks** | bracketed by two probes |
+| `A80` forced | unplanned outage, first message | **median 8 minutes _after_ it starts** | 378 messages over 52 weeks |
 
 The ordering is the part worth keeping. Balancing data — the thing everyone
 assumes is slow because it settles late — is the **fastest** series on the
-platform. Actual load, the most-used series in every load model, is the slowest
-of the near-real-time ones, and it does not arrive smoothly.
+platform. Actual load, the most-used series in every load model, is slower than
+the balancing feed and does not arrive smoothly.
+
+Two rows are deliberately missing. Generation per production type (`A75`,
+`A74`) gave us an upper bound of 20 minutes for one quarter hour and then left
+a later quarter unpublished for more than 30, which means it batches in a way
+we have not pinned down. Generation per individual unit (`A73`) was roughly 16
+hours stale on a single probe, which is a staleness reading and not a
+publication delay. Neither is measured well enough to put a number on, so
+neither gets one — [the script](check_delay.py) will tell you what they look
+like on your zone today.
 
 ## Why "delay" is the wrong word
 
@@ -62,19 +70,32 @@ stored history will happily give it to you every time.
 ## Balancing data is the fast one
 
 This surprised us enough that we watched a quarter-hour boundary directly
-rather than trusting a single probe. Imbalance price (`A85`), imbalance volume
-(`A86`) and activated balancing energy (`A84`) all had the quarter ending 13:00
-UTC when probed at 13:04, and the next quarter appeared while we were watching:
+rather than trusting a single probe — a probe cannot tell a genuinely short
+delay from a batch that happened to land just before you looked, and our first
+suspicion was that we had caught an hourly batch at a lucky moment.
+
+We had not. The imbalance price jumped to the next quarter while we watched,
+twice, from two independently started polls:
 
 ```
 13:13:32Z   A85   newest quarter ends 13:00Z
 13:17:39Z   A85   newest quarter ends 13:15Z    published 2.7 min after it ended
+
+13:16:43Z   A85   newest quarter ends 13:00Z
+13:17:23Z   A85   newest quarter ends 13:15Z    published 2.4 min after it ended
 ```
 
-Generation per production type, for that same quarter, was still not there at
-13:12. The balancing series really are the freshest thing on the platform —
-this is not an artefact of catching an hourly batch at a lucky moment, which
-was our first suspicion and the reason for the second measurement.
+Generation per production type, for that same quarter, was still not there
+half an hour later. Imbalance volume (`A86`) had the quarter ending 13:00 when
+probed at 13:04, so it is within five minutes, but we did not catch it crossing
+a boundary and will not claim a tighter figure than we measured.
+
+Activated balancing (`A84`) is the one to be careful with. It looks like a
+member of the same fast family and is not: at 13:04 its newest quarter still
+ended 12:30, and by 13:13 it had jumped forward two quarters at once. It
+arrives in batches within about a quarter of an hour, not point by point within
+three minutes. We had it in the same row as `A85` in the first draft of this
+page, which was wrong.
 
 If your mental model is "prices first, physical data next, balancing last
 because settlement takes months", it is backwards for the near-real-time feed.
@@ -132,11 +153,14 @@ outage-driven price spikes using `A80` is selling you a backtest.
 Of the 2 900 messages, **only 980 are at revision 1**. Two thirds have been
 revised at least once, one of them six times.
 
-The API serves the current revision. When you download a past outage, you get
-the message as it reads today — corrected start time, corrected capacity,
-sometimes withdrawn entirely (`docStatus` A09) — and its `createdDateTime` is
-the date of that revision, not of the original alert. There is no parameter
-that asks for "the version that existed at 14:00 on the day".
+The API serves the current revision and only that one. We checked rather than
+assumed: across 736 documents covering 612 distinct `mRID`s, **not one `mRID`
+came back in more than a single revision**, and revision numbers run as high as
+20. When you download a past outage you get the message as it reads today —
+corrected start time, corrected capacity, sometimes withdrawn entirely
+(`docStatus` A09) — and its `createdDateTime` is the date of that revision, not
+of the original alert. There is no parameter that asks for "the version that
+existed at 14:00 on the day", and the earlier versions are not reachable.
 
 This is the same versioning problem the platform has with forecasts, and it is
 worse here because nothing flags it. A backtest that reads outage history from
@@ -196,6 +220,7 @@ python3 check_delay.py YOUR_TOKEN 10YCZ-CEPS-----N
   ----------------------------------------------------------------
   A44  day-ahead price         2026-09-20 22:00Z         1968 min ahead
   A65  load, actual            2026-09-19 13:00Z           12 min stale
+  A65  load, forecast          2026-09-20 22:00Z         1968 min ahead
   A69  wind+solar, D-1         2026-09-20 18:15Z         1743 min ahead
   A69  wind+solar, intraday    —                      no data (reason 999)
   A74  wind+solar, actual      2026-09-19 12:45Z           27 min stale
@@ -210,6 +235,22 @@ python3 check_delay.py YOUR_TOKEN 10YCZ-CEPS-----N
 deduplicate on `mRID` and `revisionNumber`, and take
 `createdDateTime` minus the start of the unavailability. Split by
 `businessType`: A53 is planned maintenance, A54 is a forced outage.
+
+Two things in that paragraph are assumptions, so we tested both rather than
+trusting them.
+
+*Which field is the start of the outage.* There are three candidates in the
+document — `start_DateAndOrTime`, the `Available_Period` time interval, and the
+document-level `unavailability_Time_Period` — and reading the wrong one would
+shift every number on this page. Across all 2 900 messages they disagree
+**zero** times, so the question turns out not to matter here. It might in
+another zone; check before you rely on it.
+
+*Whether A54 really means a forced outage.* Rather than take the code list's
+word for it, we cross-tabulated `businessType` against the `Reason` each
+message carries. A54 is 352-of-378 `B18` *Failure*. A53 is dominated by `B19`
+*Maintenance* and `B20` *Outage*. The split does what the name says, confirmed
+from the data itself.
 
 ### What this does not tell you
 

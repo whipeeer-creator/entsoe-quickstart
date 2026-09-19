@@ -58,8 +58,8 @@ root = api.get(documentType="A80", biddingZone_Domain="10YCZ-CEPS-----N",
 > ### And this, if you are building features for a model
 >
 > No document on the platform says when it was published, only what it is
-> about. We measured it: balancing data is out **under 3 minutes** after the
-> quarter ends, actual load arrives in hourly blocks, and a **forced outage
+> about. We measured it: the imbalance price is out **under 3 minutes** after
+> the quarter ends, actual load arrives in hourly blocks, and a **forced outage
 > reaches `A80` a median of 8 minutes _after_ the unit is already down**.
 >
 > **[When ENTSO-E data actually arrives](docs/publication-delay.md)** — measured
