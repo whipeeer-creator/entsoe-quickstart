@@ -76,11 +76,13 @@ root = api.get(documentType="A80", biddingZone_Domain="10YCZ-CEPS-----N",
   average lands 11 % too high. Nothing in the response says anything is
   missing, which is what makes it the most common mistake with this API.
 - **Several series in one response.** Day-ahead (`contract_MarketAgreement.type`
-  A01) and intraday auctions (A07) arrive together, and since the 15-minute MTU
-  go-live the 60-minute and 15-minute publications do too, separated only by
-  `classificationSequence_AttributeInstanceComponent.position`. Merge them into
-  one dict and the last one silently overwrites the others. Spain returns six
-  such series for a single day.
+  A01) and intraday auctions (A07) arrive together. Some zones also carry a
+  second A01 day-ahead series from another auction of the same zone: Germany and
+  Austria return it next to the SDAC price, both at PT15M, separated only by
+  `classificationSequence_AttributeInstanceComponent.position` (1 = SDAC). The
+  TimeSeries `mRID` is just the order in the document, not the product. Merge
+  them into one dict and the last one silently overwrites the others. Spain
+  returns six such series for a single day.
 - **Variable resolution.** Resolution is read per `Period`, not assumed. The
   continental day-ahead auction moved to 15-minute products in 2025, Great
   Britain settles in half-hours, and some documents are daily. Code that

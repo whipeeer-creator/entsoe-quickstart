@@ -84,10 +84,11 @@ class Entsoe:
         out: dict[datetime, float] = {}
 
         def _kind(ts):
-            # A01 = day-ahead contract, A07 = intraday auction. The sequence position
-            # separates the 60-minute and 15-minute MTU publications that now run
-            # side by side. One response can carry several of these at once, and
-            # merging them silently overwrites one series with another.
+            # A01 = day-ahead contract, A07 = intraday auction. Within A01 the sequence
+            # position separates the SDAC price (1) from another auction of the same
+            # zone (2) — e.g. Germany and Austria, both PT15M. Do not rely on mRID: it
+            # is only the order in the document. One response can carry several of
+            # these at once, and merging them silently overwrites one series with another.
             agreement = ts.find("n:contract_MarketAgreement.type", ns)
             seq = ts.find("n:classificationSequence_AttributeInstanceComponent.position", ns)
             return (agreement.text if agreement is not None else "A01",
