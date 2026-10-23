@@ -68,7 +68,7 @@ days with a lot of solar, and the ones most people are interested in.
 
 ## How much it actually removes
 
-We publish [a dataset of European day-ahead prices](https://github.com/whipeeer-creator/european-power-prices)
+We built a dataset of European day-ahead prices
 back to 2022. It was built with the naive parser. When we measured it against
 what the documents actually contain:
 
@@ -256,8 +256,6 @@ for 38 bidding zones, updated through the day.
   document types, publication delays, what breaks and why
 - [EIC codes for every bidding zone](https://github.com/whipeeer-creator/eic-codes) —
   the lookup table every query needs
-- [European day-ahead prices as plain CSV](https://github.com/whipeeer-creator/european-power-prices) —
-  39 zones back to 2022, no key required
 - [What the imbalance price actually does](https://github.com/whipeeer-creator/imbalance-price-anatomy) —
   measured on 92 018 quarter hours
 
